@@ -16,7 +16,9 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 
@@ -24,6 +26,8 @@ import lombok.Setter;
 @Table(name = "orders")
 @Getter
 @Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class Order {
 
 	@Id
@@ -32,12 +36,15 @@ public class Order {
 	
 	@Column(nullable = false)
 	private Long customerId;
+	private Long productId;
+	private String productName;
 	private String description;
 	private int quantity;
 	private BigDecimal price;
 	private String orderType;
 	private String orderReference;
 	private String paymentMethod;
+	private String email;
 	private String address;
 	@CreationTimestamp
     private LocalDateTime createdAt;
@@ -57,5 +64,6 @@ public class Order {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
 
 }

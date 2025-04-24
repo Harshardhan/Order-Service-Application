@@ -38,8 +38,14 @@ public class OrderController {
 		return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
 
 	}
+    @GetMapping("/{productId}")
+    public ResponseEntity<Order> placeOrder(@PathVariable Long productId) {
+        Order order = orderService.placeOrder(productId);
+        return new ResponseEntity<>(order, HttpStatus.CREATED);
+    }
 
-	@GetMapping("/{id}")
+
+	@GetMapping("/customer/{id}")
 	public ResponseEntity<List<Order>> findByCustomerId(@PathVariable("id") Long customerId)
 			throws OrderNotFoundException {
 		List<Order> orders = orderService.findByCustomerId(customerId);
@@ -51,6 +57,7 @@ public class OrderController {
 
 		return new ResponseEntity<>(orders, HttpStatus.OK);
 	}
+
 
 	@GetMapping()
 	public ResponseEntity<List<Order>> getAllOrders() {
@@ -92,7 +99,7 @@ public class OrderController {
 	    return ResponseEntity.ok(orderProcess);
 	}
 	
-	@GetMapping("/customer/{id}")
+	@GetMapping("/order/{id}")
 	public ResponseEntity<List<Order>> getOrdersForCustomer(@PathVariable("id") Long customerId) throws UnauthorizedOrderAccessException {
 	    List<Order> ordersCustomer = orderService.getOrdersForCustomer(customerId);
 	    logger.info("Successfully retrieved orders for customer {}", customerId);

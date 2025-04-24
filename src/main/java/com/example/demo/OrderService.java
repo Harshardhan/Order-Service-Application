@@ -25,4 +25,6 @@ public interface OrderService {
 	
 	public List<Order> getAllOrders();
 
+	public Order placeOrder(Long productId);
+
 }

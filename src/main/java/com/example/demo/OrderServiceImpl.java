@@ -3,10 +3,15 @@ package com.example.demo;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -16,34 +21,77 @@ public class OrderServiceImpl implements OrderService {
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
     
     private final OrderRepository orderRepository;
+    
+    private final NotificationClient notificationClient;
+    private final ProductClient  productClient;
+    
+    
+    /**
+	 * @param orderRepository
+	 * @param notificationClient
+	 * @param productClient
+	 */
+	public OrderServiceImpl(OrderRepository orderRepository, NotificationClient notificationClient,
+			ProductClient productClient) {
+		this.orderRepository = orderRepository;
+		this.notificationClient = notificationClient;
+		this.productClient = productClient;
+	}
 
-    public OrderServiceImpl(OrderRepository orderRepository) {
-        this.orderRepository = orderRepository;
-    }
+	@Override
+	public Order createOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
 
-    @Override
-    public Order createOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
-        if (order == null) {
-            logger.error("Failed to create a new Order. Order object is null");
-            throw new InValidOrderException("Order cannot be null.");
-        }
-        if (order.getCustomerId() == null || order.getPrice() == null || order.getQuantity() <= 0) {
-            logger.error("Invalid order details. Order: {}", order);
-            throw new InValidOrderException("Order details are invalid.");
-        }
+	    // Validate the order object
+	    if (order == null) {
+	        logger.error("Failed to create a new Order. Order object is null");
+	        throw new InValidOrderException("Order cannot be null.");
+	    }
 
-        if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
-            logger.error("Order already exists with reference: {}", order.getOrderReference());
-            throw new OrderAlreadyExistsException("Order with reference " + order.getOrderReference() + " already exists.");
-        }
+	    if (order.getCustomerId() == null || order.getPrice() == null || order.getQuantity() <= 0) {
+	        logger.error("Invalid order details. Order: {}", order);
+	        throw new InValidOrderException("Order details are invalid.");
+	    }
 
-        Order savedOrder = orderRepository.save(order);
-        logger.info("Order created successfully with orderId {}", savedOrder.getId());
-        return savedOrder;
-    }
+	    // Check if order already exists
+	    if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
+	        logger.error("Order already exists with reference: {}", order.getOrderReference());
+	        throw new OrderAlreadyExistsException("Order with reference " + order.getOrderReference() + " already exists.");
+	    }
 
+	    // Set order details
+	    order.setOrderStatus(OrderStatus.CONFIRMED);
+	    order.setOrderReference(UUID.randomUUID().toString());
 
-    @Override
+	    // Save the order to the database
+	    Order savedOrder = orderRepository.save(order);
+	    logger.debug("Saving new order: {}", order);
+	    logger.info("Order placed successfully for productId {} with orderReference {}", order.getProductId(), savedOrder.getOrderReference());
+
+	    // Send notification
+	    try {
+	        // Prepare notification details
+	        Notification notification = new Notification();
+	        notification.setCustomerId(order.getCustomerId());
+	        notification.setEmail(savedOrder.getEmail());
+	        notification.setOrderId(savedOrder.getId());
+	        notification.setOrderReference(savedOrder.getOrderReference());
+	        notification.setMessage("Order placed successfully. Ref: " + savedOrder.getOrderReference());
+	        notification.setType(NotificationType.EMAIL);
+	        
+
+	        // Send notification
+	        Notification response = notificationClient.sendNotification(notification);
+	        logger.info("Notification Response: {}", response.getMessage());
+
+	    } catch (Exception e) {
+	        logger.warn("Failed to send notification: {}", e.getMessage());
+	        // Optionally: Retry or queue the notification if necessary
+	    }
+
+	    // Return the saved order
+	    return savedOrder;
+	}
+	@Override
     public List<Order> processOrder(Long orderId) {
         logger.warn("processOrder is not yet implemented for orderId: {}", orderId);
         return Collections.emptyList(); // Instead of throwing an exception
@@ -118,6 +166,9 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @CircuitBreaker(name = "OrderService", fallbackMethod = "getOrderFallback")
+    @Retry(name = "OrderService")
+    @RateLimiter(name = "OrderService")
     public List<Order> findByCustomerId(Long customerId) throws OrderNotFoundException {
     	List<Order> orders = orderRepository.findByCustomerId(customerId);
     	if (orders.isEmpty()) {
@@ -126,10 +177,31 @@ public class OrderServiceImpl implements OrderService {
     	}
     	return orders;
     }
+    
+    public List<Order> getOrderFallback(Long customerId, Throwable t) {
+        logger.error("Fallback triggered for findByCustomerId with customerId {} due to {}", customerId, t.getMessage());
+        return Collections.emptyList();
+    }
     @Override
     public List<Order> getAllOrders() {
         List<Order> orders = orderRepository.findAll();
         logger.info("Successfully retrieved {} orders", orders.size());
         return orders;
     }
+
+
+	@Override
+	public Order placeOrder(Long productId) {
+        // Fetch product details from product service
+        Product product = productClient.getProductById(productId);
+
+        // Create an order using the fetched product details
+        Order order = new Order();
+        order.setProductId(product.getId());
+        order.setProductName(product.getProductName());
+        
+        // Save or process the order further (this can involve your order repository)
+
+        return order;
+	}
 }
