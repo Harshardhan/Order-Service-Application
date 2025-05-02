@@ -1,10 +1,11 @@
 package com.example.demo;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
+import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -20,7 +21,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
 
 @Entity
 @Table(name = "orders")
@@ -46,12 +46,13 @@ public class Order {
 	private String paymentMethod;
 	private String email;
 	private String address;
+	
+	@Enumerated(EnumType.STRING)
+	private OrderStatus orderStatus;
 	@CreationTimestamp
     private LocalDateTime createdAt;
 	@UpdateTimestamp
     private LocalDateTime updatedAt;
-    @Enumerated(EnumType.STRING)    
-    private OrderStatus orderStatus; // ✅ Correct
 
 	
     @PrePersist

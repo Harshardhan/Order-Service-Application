@@ -1,96 +1,96 @@
 package com.example.demo;
 
+import com.example.demo.*;
+
 import java.util.Collections;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.client.RestTemplate;
 
 @Service
 @Transactional
 public class OrderServiceImpl implements OrderService {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
-    
+
     private final OrderRepository orderRepository;
-    
+    private final OrderEventPublisher orderEventPublisher;
     private final NotificationClient notificationClient;
-    private final ProductClient  productClient;
+    private final ProductClient productClient;
     
+    @Autowired
+    private RestTemplate restTemplate;  // For communicating with ConsolidationService
+
+    private static final String CONSOLIDATION_SERVICE_URL = "http://consolidation-service/api/consolidations";
+
+    public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher,
+                            NotificationClient notificationClient, ProductClient productClient) {
+        this.orderRepository = orderRepository;
+        this.orderEventPublisher = orderEventPublisher;
+        this.notificationClient = notificationClient;
+        this.productClient = productClient;
+    }
+
+    @Override
+    public Order createOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
+
+        // Order validation and saving logic
+        if (order == null || order.getCustomerId() == null || order.getPrice() == null || order.getQuantity() <= 0) {
+            throw new InValidOrderException("Invalid order details.");
+        }
+
+        if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
+            throw new OrderAlreadyExistsException("Order already exists.");
+        }
+
+        // Set order status and save
+        order.setOrderStatus(OrderStatus.PLACED);
+        order.setOrderReference(UUID.randomUUID().toString());
+        Order savedOrder = orderRepository.save(order);
+        logger.info("Order placed successfully: {}", savedOrder.getOrderReference());
+
+        // Send notification logic
+        try {
+            NotificationRequest notification = new NotificationRequest();
+            notification.setOrderReference(savedOrder.getOrderReference());
+            notification.setEmail(savedOrder.getEmail());
+            notification.setMessage("Order placed successfully.");
+            notificationClient.sendNotification(notification);
+        } catch (Exception e) {
+            logger.warn("Failed to send notification: {}", e.getMessage());
+        }
+
+        // Communicate with Consolidation Service
+        try {
+            String consolidationUrl = CONSOLIDATION_SERVICE_URL + "/order/" + savedOrder.getOrderReference();
+            Consolidation consolidation = restTemplate.getForObject(consolidationUrl, Consolidation.class);
+            if (consolidation != null) {
+                logger.info("Successfully retrieved consolidation for order: {}", savedOrder.getOrderReference());
+            } else {
+                logger.warn("No consolidation record found for order: {}", savedOrder.getOrderReference());
+            }
+        } catch (Exception e) {
+            logger.error("Failed to communicate with Consolidation Service for order {}: {}", savedOrder.getOrderReference(), e.getMessage());
+        }
+
+        // Publish event to RabbitMQ
+        orderEventPublisher.sendOrderEvent("Order Placed: ID - " + savedOrder.getId());
+
+        return savedOrder;
+    }
     
-    /**
-	 * @param orderRepository
-	 * @param notificationClient
-	 * @param productClient
-	 */
-	public OrderServiceImpl(OrderRepository orderRepository, NotificationClient notificationClient,
-			ProductClient productClient) {
-		this.orderRepository = orderRepository;
-		this.notificationClient = notificationClient;
-		this.productClient = productClient;
-	}
+    // Other methods like updateOrder(), deleteOrder(), etc., remain the same
 
-	@Override
-	public Order createOrder(Order order) throws InValidOrderException, OrderAlreadyExistsException {
-
-	    // Validate the order object
-	    if (order == null) {
-	        logger.error("Failed to create a new Order. Order object is null");
-	        throw new InValidOrderException("Order cannot be null.");
-	    }
-
-	    if (order.getCustomerId() == null || order.getPrice() == null || order.getQuantity() <= 0) {
-	        logger.error("Invalid order details. Order: {}", order);
-	        throw new InValidOrderException("Order details are invalid.");
-	    }
-
-	    // Check if order already exists
-	    if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
-	        logger.error("Order already exists with reference: {}", order.getOrderReference());
-	        throw new OrderAlreadyExistsException("Order with reference " + order.getOrderReference() + " already exists.");
-	    }
-
-	    // Set order details
-	    order.setOrderStatus(OrderStatus.CONFIRMED);
-	    order.setOrderReference(UUID.randomUUID().toString());
-
-	    // Save the order to the database
-	    Order savedOrder = orderRepository.save(order);
-	    logger.debug("Saving new order: {}", order);
-	    logger.info("Order placed successfully for productId {} with orderReference {}", order.getProductId(), savedOrder.getOrderReference());
-
-	    // Send notification
-	    try {
-	        // Prepare notification details
-	        Notification notification = new Notification();
-	        notification.setCustomerId(order.getCustomerId());
-	        notification.setEmail(savedOrder.getEmail());
-	        notification.setOrderId(savedOrder.getId());
-	        notification.setOrderReference(savedOrder.getOrderReference());
-	        notification.setMessage("Order placed successfully. Ref: " + savedOrder.getOrderReference());
-	        notification.setType(NotificationType.EMAIL);
-	        
-
-	        // Send notification
-	        Notification response = notificationClient.sendNotification(notification);
-	        logger.info("Notification Response: {}", response.getMessage());
-
-	    } catch (Exception e) {
-	        logger.warn("Failed to send notification: {}", e.getMessage());
-	        // Optionally: Retry or queue the notification if necessary
-	    }
-
-	    // Return the saved order
-	    return savedOrder;
-	}
 	@Override
     public List<Order> processOrder(Long orderId) {
         logger.warn("processOrder is not yet implemented for orderId: {}", orderId);
@@ -197,7 +197,7 @@ public class OrderServiceImpl implements OrderService {
 
         // Create an order using the fetched product details
         Order order = new Order();
-        order.setProductId(product.getId());
+        order.setCustomerId(order.getCustomerId());
         order.setProductName(product.getProductName());
         
         // Save or process the order further (this can involve your order repository)
