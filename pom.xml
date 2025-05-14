@@ -9,14 +9,14 @@
 		<groupId>com.bps</groupId>
 		<artifactId>BranchPickingSystem</artifactId>
 		<version>1.0.0</version>
-		<relativePath />
+		<relativePath>../pom.xml</relativePath> <!-- Adjust path if needed -->
 	</parent>
+
 
 	<groupId>com.bps</groupId>
 	<artifactId>OrderServiceApplication</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>OrderServiceApplication</name>
-	<description>Handles order placement and processing</description>
+	<packaging>jar</packaging>
 
 	<properties>
 		<java.version>17</java.version>
@@ -34,6 +34,12 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<dependency>
+				<groupId>net.logstash.logback</groupId>
+				<artifactId>logstash-logback-encoder</artifactId>
+				<version>7.4</version>
+			</dependency>
+
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
@@ -123,6 +129,7 @@
 			<artifactId>Common-Library</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+
 	</dependencies>
 
 	<build>

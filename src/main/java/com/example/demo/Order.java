@@ -47,7 +47,6 @@ public class Order {
 	private String email;
 	private String address;
 	
-	@Enumerated(EnumType.STRING)
 	private OrderStatus orderStatus;
 	@CreationTimestamp
     private LocalDateTime createdAt;

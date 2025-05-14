@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
+        <remoteHost>localhost</remoteHost>
+        <port>5044</port>
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp/>
+                <pattern>
+                    <pattern>{ "service": "order-service" }</pattern>
+                </pattern>
+                <loggerName/>
+                <threadName/>
+                <logLevel/>
+                <message/>
+                <logstashMarkers/>
+                <arguments/>
+                <mdc/>
+            </providers>
+        </encoder>
+    </appender>
+    <root level="INFO">
+        <appender-ref ref="LOGSTASH"/>
+    </root>
+</configuration>
