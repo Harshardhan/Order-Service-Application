@@ -9,7 +9,8 @@
 		<groupId>com.bps</groupId>
 		<artifactId>BranchPickingSystem</artifactId>
 		<version>1.0.0</version>
-		<relativePath>../pom.xml</relativePath> <!-- Adjust path if needed -->
+		<relativePath>../pom.xml</relativePath>
+
 	</parent>
 
 
@@ -39,6 +40,10 @@
 				<artifactId>logstash-logback-encoder</artifactId>
 				<version>7.4</version>
 			</dependency>
+			<dependency>
+				<groupId>ch.qos.logback</groupId>
+				<artifactId>logback-classic</artifactId>
+			</dependency>
 
 			<dependency>
 				<groupId>org.springframework.cloud</groupId>
@@ -56,6 +61,17 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+			<version>7.4</version> <!-- Use latest stable version -->
+		</dependency>
+		<dependency>
+			<groupId>io.zipkin.reporter2</groupId>
+			<artifactId>zipkin-reporter-brave</artifactId>
+		</dependency>
+
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -124,23 +140,41 @@
 		</dependency>
 
 		<!-- Common Library -->
+
 		<dependency>
 			<groupId>com.bps</groupId>
 			<artifactId>Common-Library</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
+			<version>1.0.0</version>
 		</dependency>
-
 	</dependencies>
 
 	<build>
 		<plugins>
-			<!-- Compiler Plugin -->
+			<!-- Spring Boot Maven Plugin -->
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<executable>true</executable>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>repackage</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Maven Compiler Plugin -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.11.0</version>
 				<configuration>
-					<release>17</release> <!-- or 21 -->
+					<source>${java.version}</source>
+					<target>${java.version}</target>
+					<release>${java.version}</release>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>

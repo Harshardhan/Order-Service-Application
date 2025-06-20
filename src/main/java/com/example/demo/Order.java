@@ -2,6 +2,7 @@ package com.example.demo;
 
 import java.math.BigDecimal;
 
+
 import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -47,6 +48,7 @@ public class Order {
 	private String email;
 	private String address;
 	
+	@Enumerated(EnumType.STRING)
 	private OrderStatus orderStatus;
 	@CreationTimestamp
     private LocalDateTime createdAt;
@@ -65,5 +67,15 @@ public class Order {
         this.updatedAt = LocalDateTime.now();
     }
 
+	@Override
+	public String toString() {
+		return "Order [id=" + id + ", customerId=" + customerId + ", productId=" + productId + ", productName="
+				+ productName + ", description=" + description + ", quantity=" + quantity + ", price=" + price
+				+ ", orderType=" + orderType + ", orderReference=" + orderReference + ", paymentMethod=" + paymentMethod
+				+ ", email=" + email + ", address=" + address + ", orderStatus=" + orderStatus + ", createdAt="
+				+ createdAt + ", updatedAt=" + updatedAt + "]";
+	}
+
+    
 
 }

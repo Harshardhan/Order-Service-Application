@@ -6,10 +6,16 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.demo.excpetions.InValidOrderException;
+import com.example.demo.excpetions.OrderAlreadyExistsException;
+import com.example.demo.excpetions.OrderNotFoundException;
+import com.example.demo.excpetions.OrderProcessingException;
+import com.example.demo.excpetions.UnauthorizedOrderAccessException;
+
 
 public interface OrderService {
 
-	public Order createOrder(Order order)throws InValidOrderException, OrderAlreadyExistsException ;
+	public Order placeOrder(Order order)throws InValidOrderException, OrderAlreadyExistsException ;
 	
 	public List<Order> processOrder(Long orderId)throws OrderProcessingException;
 	
@@ -25,6 +31,6 @@ public interface OrderService {
 	
 	public List<Order> getAllOrders();
 
-	public Order placeOrder(Long productId);
+	public Order placeOrder(Long productId) throws InValidOrderException, OrderAlreadyExistsException;
 
 }

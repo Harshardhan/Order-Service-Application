@@ -2,8 +2,17 @@ package com.example.demo;
 
 
 import org.springframework.http.HttpStatus;
+
+
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import com.example.demo.excpetions.InValidOrderException;
+import com.example.demo.excpetions.OrderAlreadyExistsException;
+import com.example.demo.excpetions.OrderNotFoundException;
+import com.example.demo.excpetions.OrderProcessingException;
+import com.example.demo.excpetions.UnauthorizedOrderAccessException;
+
 import org.springframework.http.ResponseEntity;
 
 @RestControllerAdvice

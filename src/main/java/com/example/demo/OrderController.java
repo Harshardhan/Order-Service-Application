@@ -16,6 +16,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.excpetions.InValidOrderException;
+import com.example.demo.excpetions.OrderAlreadyExistsException;
+import com.example.demo.excpetions.OrderNotFoundException;
+import com.example.demo.excpetions.OrderProcessingException;
+import com.example.demo.excpetions.UnauthorizedOrderAccessException;
+
 import jakarta.validation.Valid;
 
 @RestController
@@ -33,13 +39,13 @@ public class OrderController {
 	@PostMapping()
 	public ResponseEntity<Order> createOrder(@RequestBody @Valid Order order)
 			throws InValidOrderException, OrderAlreadyExistsException {
-		Order createdOrder = orderService.createOrder(order);
-		logger.info("Order created successfully - OrderId: {}, Customer: {}", createdOrder.getId());
+		Order createdOrder = orderService.placeOrder(order);
+		logger.info("Order created successfully - OrderId: {}, Customer: {}", order.toString());
 		return new ResponseEntity<>(createdOrder, HttpStatus.CREATED);
 
 	}
     @GetMapping("/{productId}")
-    public ResponseEntity<Order> placeOrder(@PathVariable Long productId) {
+    public ResponseEntity<Order> placeOrder(@PathVariable Long productId) throws InValidOrderException, OrderAlreadyExistsException {
         Order order = orderService.placeOrder(productId);
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }

@@ -1,0 +1,26 @@
+# Maven build directory
+target/
+
+# IDE configuration files
+.classpath
+.project
+.settings/
+.factorypath
+
+# Git and other VCS
+.git
+.gitignore
+.gitattributes
+
+# Logs
+logs/
+*.log
+
+# OS and editor-specific files
+.DS_Store
+Thumbs.db
+
+# Maven wrapper files (optional, if not needed in image)
+mvnw
+mvnw.cmd
+.mvn/

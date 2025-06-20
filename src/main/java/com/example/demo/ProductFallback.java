@@ -10,6 +10,7 @@ public class ProductFallback implements ProductClient {
         fallbackProduct.setId(id);
         fallbackProduct.setProductName("Fallback Product");
         fallbackProduct.setDescription("Product service is currently unavailable.");
+        fallbackProduct.setCategory("Fallback Category");
         return fallbackProduct;
     }
 }
