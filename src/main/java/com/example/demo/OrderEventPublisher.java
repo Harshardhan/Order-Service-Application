@@ -1,31 +1,35 @@
 package com.example.demo;
 
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
-@Component
+@Service
 public class OrderEventPublisher {
-    @Autowired
-    private RabbitTemplate rabbitTemplate;
-    @Autowired
-    private ObjectMapper objectMapper;
 
-    public void sendOrderEvent(Order order) {
-        try {
-            String json = objectMapper.writeValueAsString(order);
-            rabbitTemplate.convertAndSend(
-                RabbitMQConfig.ORDER_EXCHANGE,
-                RabbitMQConfig.ORDER_ROUTING_KEY,
-                json
-            );
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize Order object for messaging", e);
-        }
+    private static final Logger logger = LoggerFactory.getLogger(OrderEventPublisher.class);
+
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    @Value("${kafka.topic.order}")
+    private String orderTopic;
+
+    @Value("${kafka.topic.notification}")
+    private String notificationTopic;
+
+    public OrderEventPublisher(KafkaTemplate<String, Object> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    public void publishOrderPlacedEvent(Order order) {
+        kafkaTemplate.send(orderTopic, order.getCustomerId().toString(), order);
+        logger.info("✅ Kafka Order Event published to topic: {}", orderTopic);
+    }
+
+    public void publishNotificationEvent(NotificationRequest notification) {
+    	kafkaTemplate.send(notificationTopic, String.valueOf(notification.getCustomerId()), notification);
+        logger.info("✅ Kafka Notification Event published to topic: {}", notificationTopic);
     }
 }

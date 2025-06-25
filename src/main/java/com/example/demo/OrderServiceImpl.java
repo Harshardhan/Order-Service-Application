@@ -36,8 +36,6 @@ public class OrderServiceImpl implements OrderService {
 	private final NotificationClient notificationClient;
 	private final ProductClient productClient;
 
-	@Autowired
-	private RestTemplate restTemplate; // For communicating with ConsolidationService
 
 	private static final String CONSOLIDATION_SERVICE_URL = "http://CONSOLIDATION-SERVICE";
 
@@ -60,58 +58,42 @@ public class OrderServiceImpl implements OrderService {
 		if (orderRepository.findByOrderReferenceIgnoreCase(order.getOrderReference()).isPresent()) {
 			throw new OrderAlreadyExistsException("Order already exists.");
 		}
-
-		// Set order status and save
+		// Step 2: Save order
 		order.setOrderStatus(OrderStatus.PLACED);
 		order.setOrderReference(UUID.randomUUID().toString());
 		Order savedOrder = orderRepository.save(order);
-		logger.info("Order placed successfully: {}", savedOrder.getOrderReference());
+		logger.info("✅ Order placed successfully: {}", savedOrder.getOrderReference());
 
-		// Send notification logic
+
+		// Step 3: Publish Kafka event to Consolidation Service
 		try {
-			NotificationRequest notification = new NotificationRequest();
-			notification.setOrderReference(savedOrder.getOrderReference());
-			notification.setEmail(savedOrder.getEmail());
-			notification.setMessage("Order placed successfully.");
-			notificationClient.sendNotification(notification);
+		    orderEventPublisher.publishOrderPlacedEvent(savedOrder);
+		    logger.info("📤 Kafka event published to Consolidation topic for order: {}", savedOrder.getOrderReference());
 		} catch (Exception e) {
-			logger.warn("Failed to send notification: {}", e.getMessage());
+		    logger.error("❌ Failed to publish to Kafka for Consolidation: {}", e.getMessage());
 		}
 
-		// Communicate with Consolidation Service
+		// Step 4: Publish Kafka event to Notification Service
+		// Step 4: Publish Kafka event to Notification Service
 		try {
-			String optimizeUrl = CONSOLIDATION_SERVICE_URL + "/api/consolidations/optimize";
+		    NotificationRequest notification = new NotificationRequest();
+		    notification.setCustomerId(savedOrder.getCustomerId());
+		    notification.setOrderId(savedOrder.getId());
+		    notification.setOrderReference(savedOrder.getOrderReference());
+		    notification.setEmail(savedOrder.getEmail());
+		    notification.setMessage("Order placed successfully!");
+		    notification.setPrice(savedOrder.getPrice());
+		    notification.setQuantity(savedOrder.getQuantity());
+		    notification.setPaymentMethod(savedOrder.getPaymentMethod());
+		    notification.setAddress(savedOrder.getAddress());
+		    notification.setType(NotificationType.EMAIL); // ✅ important
 
-			Consolidation requestBody = new Consolidation();
-			requestBody.setOrderReference(savedOrder.getOrderReference());
-
-			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
-
-			HttpEntity<Consolidation> requestEntity = new HttpEntity<>(requestBody, headers);
-			logger.info("Calling Consolidation Service at: {}", optimizeUrl);
-
-			ResponseEntity<Consolidation> response = restTemplate.postForEntity(optimizeUrl, requestEntity,
-					Consolidation.class);
-			logger.info("Consolidation Service response status: {}", response.getStatusCode());
-
-			Consolidation consolidation = response.getBody();
-
-			if (consolidation != null) {
-				logger.info("Successfully triggered consolidation for order: {}", consolidation.getOrderReference());
-			} else {
-				logger.warn("Consolidation service returned null for order: {}", savedOrder.getOrderReference());
-			}
-
+		    orderEventPublisher.publishNotificationEvent(notification);
+		    logger.info("📤 Kafka event published to Notification topic for order: {}", savedOrder.getOrderReference());
 		} catch (Exception e) {
-			logger.error("Failed to communicate with Consolidation Service for order {}: {}",
-					savedOrder.getOrderReference(), e.getMessage());
+		    logger.warn("❌ Failed to publish notification event: {}", e.getMessage());
 		}
-
-		// Publish event to RabbitMQ
-		orderEventPublisher.sendOrderEvent(savedOrder);
-
-		// ✅ Return saved order (fix)
+		// Step 5: Return saved order
 		return savedOrder;
 	}
 	// Other methods like updateOrder(), deleteOrder(), etc., remain the same

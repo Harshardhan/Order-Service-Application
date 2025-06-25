@@ -1,5 +1,6 @@
 package com.example.demo;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 
@@ -29,7 +30,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class Order {
+public class Order  {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
