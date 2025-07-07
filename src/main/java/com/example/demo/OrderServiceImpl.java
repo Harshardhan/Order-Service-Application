@@ -36,7 +36,6 @@ public class OrderServiceImpl implements OrderService {
 	private final NotificationClient notificationClient;
 	private final ProductClient productClient;
 
-
 	private static final String CONSOLIDATION_SERVICE_URL = "http://CONSOLIDATION-SERVICE";
 
 	public OrderServiceImpl(OrderRepository orderRepository, OrderEventPublisher orderEventPublisher,
@@ -61,6 +60,8 @@ public class OrderServiceImpl implements OrderService {
 		// Step 2: Save order
 		order.setOrderStatus(OrderStatus.PLACED);
 		order.setOrderReference(UUID.randomUUID().toString());
+		order.setProductId(order.getProductId()); 
+		order.setProductName(order.getProductName());
 		Order savedOrder = orderRepository.save(order);
 		logger.info("✅ Order placed successfully: {}", savedOrder.getOrderReference());
 
@@ -72,6 +73,8 @@ public class OrderServiceImpl implements OrderService {
 		} catch (Exception e) {
 		    logger.error("❌ Failed to publish to Kafka for Consolidation: {}", e.getMessage());
 		}
+		Product product = productClient.getProductById(order.getProductId());
+		String productName = product != null ? product.getProductName() : "Unknown";
 
 		// Step 4: Publish Kafka event to Notification Service
 		// Step 4: Publish Kafka event to Notification Service
@@ -86,6 +89,10 @@ public class OrderServiceImpl implements OrderService {
 		    notification.setQuantity(savedOrder.getQuantity());
 		    notification.setPaymentMethod(savedOrder.getPaymentMethod());
 		    notification.setAddress(savedOrder.getAddress());
+		    notification.setProductId(savedOrder.getProductId());
+		    notification.setProductName(savedOrder.getProductName()); // ✅ This line is missing
+		    notification.setOrderType(savedOrder.getOrderType());
+		    
 		    notification.setType(NotificationType.EMAIL); // ✅ important
 
 		    orderEventPublisher.publishNotificationEvent(notification);
